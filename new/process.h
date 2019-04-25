@@ -11,7 +11,8 @@ typedef struct Process {
 	exec_time,
 	start_time,
 	end_time,
-	max_int;
+	max_int,
+	clock_int;
 } Process;
 
 Process *newProcess(double clock_time);

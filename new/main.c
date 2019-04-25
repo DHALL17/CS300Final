@@ -7,7 +7,6 @@
 double clock_time;
 double systemMemory;
 double new_process;
-int totalProcesses;
 
 // void stats(Process *p) {
 // 	int p0count = 0, p1count = 0, p2count = 0, p3count = 0;	// Each Priorities process count
@@ -25,9 +24,39 @@ void endProcess(QUEUE *Completed, Process *p) {
 	return;
 }
 
+void createProcess(QUEUE **Memory, QUEUE **Disk) {
+	Process *p = newProcess(clock_time);
+	// Only a processes working set is placed in memory
+	if(p == NULL)
+		return;
+	double workingSet = p->memory / 10;
+	// If the processes working set doesn't fit in memory it goes to Disk
+	if(systemMemory - workingSet < 0)
+	{
+		enqueue(Disk[p->priority], p);
+	}
+	// If there is room in Memory the Processes working set is placed in memory
+	else
+	{
+		systemMemory -= workingSet;
+		enqueue(Memory[p->priority], p);
+	}
+	
+	return;
+}
+
 void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk) {
 	Process *p = dequeue(q);
-	// printf("Process Name in execution engine: %s\n", p->pname);
+	// Handles gathering information for stats in the end
+	if ( p->max_int == 0.0)
+		p->max_int = clock_time - p->start_time;
+	else
+	{
+		double temp = clock_time - p->clock_int;
+		if(temp > p->max_int)
+			p->max_int = temp;
+	}
+
 	// Will run until block count == 0 or execution time passes runtime or reaches the quantum
 	double quantum = clock_time + 0.01; // quantum is 10ms 1ms = 0.001s
 	while(clock_time < quantum)
@@ -47,6 +76,7 @@ void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk) 
 
 		if(p->block_count == 0 || p->exec_time > p->runtime)
 		{
+			p->end_time = clock_time;
 			if(p->block_count == 0)
 			{
 				// printf("Block Count was exceeded\n");
@@ -63,29 +93,8 @@ void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk) 
 		}
 	}
 	// Enqueues the process back into the queue it was in after it reaches the quantum
+	p->clock_int = clock_time;
 	enqueue(q, p);
-	return;
-}
-
-void createProcess(QUEUE **Memory, QUEUE **Disk) {
-	totalProcesses++;
-	Process *p = newProcess(clock_time);
-	// Only a processes working set is placed in memory
-	if(p == NULL)
-		return;
-	double workingSet = p->memory / 10;
-	// If the processes working set doesn't fit in memory it goes to Disk
-	if(systemMemory - workingSet < 0)
-	{
-		enqueue(Disk[p->priority], p);
-	}
-	// If there is room in Memory the Processes working set is placed in memory
-	else
-	{
-		systemMemory -= workingSet;
-		enqueue(Memory[p->priority], p);
-	}
-	
 	return;
 }
 
@@ -128,7 +137,6 @@ void diskToMemory(QUEUE **Memory, QUEUE **Disk, Process *p) {
 }
 
 int main(void) {
-	totalProcesses = 0;
 	clock_time = 0;
 	systemMemory = 100;
 	new_process = ((rand() % 9981) + 20) / 1000.0;
@@ -156,7 +164,7 @@ int main(void) {
 	QUEUE *Completed = newQUEUE(freeProcess);
 
 	// Processes are created and placed onto Memory or Disk
-	for(int x = 0; x < 12; ++x)
+	for(int x = 0; x < 50; ++x)
 		createProcess(Memory, Disk);
 	
 	//  ------   SCHEDULER  ------   //
@@ -188,4 +196,21 @@ int main(void) {
 
 	} while(processCount != 0);
 	//  ------   SCHEDULER  ------   //
+	printf("Total Processes: %i\n", sizeQUEUE(Completed));
+	int size = sizeQUEUE(Completed);
+	for(int x = 0; x < size; ++x)
+	{
+		Process *p = dequeue(Completed);
+		if(p->block_count != 0)
+		{
+			printf("Process Name: %s\n", p->pname);
+			printf("Process Priority: %i\n", p->priority);
+			printf("Process Block_Count: %i\n", p->block_count);
+			printf("Process RunTime: %f\n", p->runtime);
+			printf("Process Ecec_Time: %f\n", p->exec_time);
+			printf("Process Start_Time: %f\n", p->start_time);
+			printf("Process End_Time: %f\n", p->end_time);
+			printf("Process Max_Int: %f\n\n", p->max_int);
+		}
+	}
 }

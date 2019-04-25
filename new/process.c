@@ -7,7 +7,7 @@ Process *newProcess(double clock_time) {
     if(pnum == 2200)
         return NULL;
     Process *p = malloc(sizeof(Process));
-    sprintf(p->pname, "p%i", pnum++);
+    sprintf(p->pname, "P%i", pnum++);
     p->priority = rand() % 4;                   // Priority of the process
     p->memory = (rand() % 191) + 10;            // Amount of memory required for the process
     p->runtime = (rand() % 39601) + 400;        // Maximum allowed run-time
