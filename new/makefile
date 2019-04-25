@@ -1,5 +1,5 @@
 FLAGS = -std=c99 -Wall -Wextra -g
-OBJS = cda.o queue.o main.o
+OBJS = cda.o queue.o process.o main.o
 
 all: main
 
@@ -15,5 +15,8 @@ cda.o: cda.c cda.h
 queue.o: queue.c queue.h cda.h
 	gcc $(FLAGS) -c queue.c
 
+process.o: process.c process.h
+	gcc $(FLAGS) -c process.c
+
 clean:
-	rm -f $(OBJS) main p*
+	rm -f $(OBJS) main

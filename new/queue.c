@@ -44,6 +44,15 @@ int   sizeQUEUE(QUEUE *items){
     return items->size;
 }
 
+// Returns the size of the Queue array
+// Can be assumed to have 4 indexes in this project
+int sizeQUEUEarray(QUEUE **items){
+    int size = 0;
+    for(int x = 0; x < 4; ++x)
+        size += sizeQUEUE(items[x]);
+    return size;
+}
+
 //Free's the array
 void  freeQUEUE(QUEUE *items){
     freeCDA(items->cda);

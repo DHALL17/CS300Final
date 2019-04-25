@@ -1,364 +1,131 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <math.h>
+#include "process.h"
 #include "queue.h"
 
-double clock_time , btime;
-int processCount , memorySize , diskSize , blockedCount , pname , tlr, b , a;
-int pCount [ 4 ];
+double clock_time;
+double memorySize;
 
-typedef struct Process {
-	char pname[10];
-	int priority, 
-	memory,
-    block_count;
-	double blocked,
-    runtime,
-	exec_time,
-	start_time,
-	end_time,
-	max_int;
-} Process;
+// void stats(Process *p) {
+// 	int p0count = 0, p1count = 0, p2count = 0, p3count = 0;	// Each Priorities process count
+// 	double p0life = 0, p1life = 0, p2life = 0, p3life = 0;	// Each Priorities life span
+// 	double p0int = 0, p1int = 0, p2int = 0, p3int = 0;		// Each priorities max intervals
+// 	return;
+// }
 
-Process *newProcess() {
-    static int pnum = 0;
-    Process *p = malloc(sizeof(Process));
-    sprintf(p->pname, "p%i", pnum++);
-    p->priority = rand() % 4;
-    p->memory = (rand() % 191) + 10;
-    p->runtime = (rand() % 39601) + 400;
-    p->block_count = (rand() % 99001) + 1000;
-	pCount[ p->priority ]++;
-    p->exec_time = 0;
-    p->blocked = 0;
-    p->start_time = clock_time;
-    p->max_int = 0;
-    return p;
-}
-
-void freeProcess ( void *item ) {
-	Process *p = ( Process * ) item;
-	processCount--;
-	memorySize--;
-	p->end_time = clock_time;
-	pCount[ p->priority ]--;
-	memorySize--;
-	p->end_time = clock_time;
-	if ( p->start_time <= 0.020)
-		p->start_time = 0;
-	p->end_time = clock_time;
-	free ( p );
-}
-
-void dam ( char *s ) {
-	printf ( "%s\n" , s );
-	exit ( 1 );
-}
-
-void storage_handler( QUEUE **Memory , QUEUE **Disk , double *memory , Process *p ){
-	if ( *memory - ( p->memory * 0.1 ) >= 0 ) {
-		*memory = *memory - ( p->memory * 0.1 );
-		enqueue(Memory[p->priority], p);
-	}
-	else {
-		enqueue(Disk[p->priority], p);
-	}
-}
-
-void proc_exec ( QUEUE **M , QUEUE **D , QUEUE *q , Process *p , double *memory , double *new_process ) {
-	double block, quantum;	
-
-	// if ( p->blocked ) {
-	// 	if ( btime > p->block_time || !btime )
-	// 			btime = p->block_time;
-
-	// 	if ( clock_time >= p->block_time ) {
-	// 		p->blocked = 0;
-	// 		blockedCount--;
-	// 	}
-	// 	enqueue ( q , p );
-	// 	return;
-	// }
-
-	if ( p->max_int == 0.0)
-		p->max_int = clock_time - p->start_time;
-	
-	else {
-		int temp = clock_time - p->max_int;
-		if( temp > clock_time - p->max_int )
-			p->max_int = temp;
-	}
-
-	// fscanf ( p->fp , "%lf" , &block );
-	// if ( feof ( p->fp ) ) {
-	// 	*memory = *memory + ( p->memory * 0.1 );
-	// 	p->end_time = clock_time;
-	// 	processCount--;
-	// 	memorySize--;
-	// 	p->end_time = clock_time;
-	// 	enqueue( M[ 4 ] , p );
-	// 	return;
-	// }
-
-	// if ( p->exec_time + block > p->runtime ) {
-	// 	*memory = *memory + ( p->memory * 0.1 );
-	// 	tlr++;
-	// 	processCount--;
-	// 	memorySize--;
-	// 	p->end_time = clock_time;
-	// 	enqueue( M[ 4 ] , p );
-	// 	return;
-	// }
-
-	block = (rand() % 20) / 1000;
-	p->block_count--;
-	quantum = clock_time + 10;
-	while ( p->exec_time + block <= quantum ) {
-		if ( p->start_time == 0.000 )
-			p->start_time = clock_time;
-
-		if ( p->block_count == 0) {
-			*memory = *memory + ( p->memory * 0.1 );
-			processCount--;
-			memorySize--;
-			p->end_time = clock_time;
-			enqueue( M[ 4 ] , p );
-			return;
-		}
-
-		if ( p->exec_time + block > p->runtime ) {
-			*memory = *memory + ( p->memory * 0.1 );
-			tlr++;
-			processCount--;
-			memorySize--;
-			p->end_time = clock_time;
-			enqueue( M[ 4 ] , p );
-			return;
-		}
-		
-		// if ( blocked ( ) ) {
-		// 	p->blocked = 1;
-		// 	delay ( p );
-		// 	if ( btime > p->block_time || !btime )
-		// 		btime = p->block_time;
-		// 	blockedCount++;
-		// 	break;
-		// }
-
-		if ( *new_process <= clock_time  && pname < 1000 )  {
-			Process *p = newProcess(clock_time);
-        	storage_handler(M, D, memory, p);
-			*new_process = clock_time + ( ( rand ( ) % 9981 ) + 20 );
-		}
-		
-		p->exec_time += block;
-		clock_time += block;
-		block = (rand() % 20) / 1000;
+void execution_engine(QUEUE *q, QUEUE *Completed) {
+	Process *p = dequeue(q);
+	// Will run until block count == 0 or execution time passes runtime or reaches the quantum
+	double quantum = clock_time + 0.01; // quantum is 10ms 1ms = 0.001s
+	while(clock_time < quantum) {
+		double block = ((rand() % 19) + 1) / 1000000; // A block represents a microsecond 1us = 0.000001s
+		int address = rand() % 1000001;
 		p->block_count--;
 
+		clock_time += block;
+		p->exec_time += block;
+
+		if(p->block_count == 0 || p->exec_time > p->runtime) {
+			if(p->block_count == 0) {
+				// printf("Block Count was exceeded\n");
+				enqueue(Completed, p);
+				return;
+			}
+			
+			if(p->exec_time > p->runtime) {
+				// printf("Execution Time passed Run Time\n");
+				enqueue(Completed, p);
+				return;
+			}
+		}
 	}
-	enqueue ( q , p );
+	// Enqueues the process back into the queue it was in after it reaches the quantum
+	enqueue(q, p);
+	return;
 }
 
-void disk_handler ( QUEUE **Memory , QUEUE **Disk , double *memory , Process *p , double *new_process ) {
-	if ( *memory - ( p->memory * 0.1 ) >= 0 ) {
-		*memory = *memory - ( p->memory * 0.1 );
-		if ( p->blocked )
-			blockedCount++;
-		proc_exec ( Memory, Disk , Memory[ p->priority ], p , memory , new_process );
-		memorySize++;
-		diskSize--;
-		return;
+void createProcess(QUEUE **Memory, QUEUE **Disk) {
+	Process *p = newProcess(clock_time);
+	// printf("Process Name: %s\n", p->pname);
+	// printf("Process Priority: %i\n", p->priority);
+	// printf("Process Memory: %i\n", p->memory);
+	// printf("Process Runtime: %f\n", p->runtime);
+	// printf("Process Block Count: %i\n\n", p->block_count);
+	// printf("Current MemorySize: %f\n", memorySize);
+	// Only a processes working set is placed in memory
+	double workingSet = p->memory / 10;
+	// If the processes working set doesn't fit in memory it goes to Disk
+	if(memorySize - workingSet < 0) {
+		enqueue(Disk[p->priority], p);
+		// printf("%s enqueued to Disk\n\n", p->pname);
 	}
+	// If there is room in Memory the Processes working set is placed in memory
 	else {
-		for ( int x = 3 ; x >= 0 ; --x ) {
-			while( sizeQUEUE ( Memory[ x ] ) ) {
-				Process *temp = dequeue ( Memory[ x ] );
-				*memory = *memory + ( temp->memory * 0.1 );
-				if ( temp->blocked )
-					blockedCount--;
-				enqueue ( Disk[ temp->priority ] , temp);
-				memorySize--;
-				diskSize++;
-				p->end_time = clock_time;
-
-				if ( *memory - ( p->memory * 0.1 ) >= 0 ) {
-					clock_time += 100;
-					*memory = *memory - ( p->memory * 0.1 );
-					if ( p->blocked )
-						blockedCount++;
-					proc_exec ( Memory , Disk , Memory[ p->priority ], p , memory , new_process );
-					memorySize++;
-					diskSize--;
-					return;
-				}
-			}
-		}
-		dam( "Error: Memory space was not allocated correctly" );
+		memorySize -= workingSet;
+		enqueue(Memory[p->priority], p);
+		// printf("%s enqueued to Memory\n\n", p->pname);
 	}
+	
+	return;
 }
 
-int main(void){
-    tlr = 0 , clock_time = 0 , memorySize = 0 , diskSize = 0 , processCount = 0 , blockedCount = 0 , pname = 0 , btime = 0;
-	pCount[ 0 ] = 0;
-	pCount[ 1 ] = 0;
-	pCount[ 2 ] = 0;
-	pCount[ 3 ] = 0;
+int main(void) {
+	clock_time = 0;
+	memorySize = 100;
 	srand(time(NULL));
-	double memory = 100;	// 100 Mb of system memory
-	QUEUE **Memory = malloc ( sizeof( QUEUE* ) * 5 );
-	QUEUE *P0I = newQUEUE ( freeProcess );
-	QUEUE *P1I = newQUEUE ( freeProcess );
-	QUEUE *P2I = newQUEUE ( freeProcess );
-	QUEUE *P3I = newQUEUE ( freeProcess );
-	QUEUE *end = newQUEUE ( freeProcess );
-	Memory[ 0 ] = P0I;
-	Memory[ 1 ] = P1I;
-	Memory[ 2 ] = P2I;
-	Memory[ 3 ] = P3I;
-	Memory[ 4 ] = end;
+	QUEUE **Memory = malloc(sizeof(QUEUE*) * 4);
+	QUEUE *MP0 = newQUEUE(freeProcess);
+	QUEUE *MP1 = newQUEUE(freeProcess);
+	QUEUE *MP2 = newQUEUE(freeProcess);
+	QUEUE *MP3 = newQUEUE(freeProcess);
+	Memory[0] = MP0;
+	Memory[1] = MP1;
+	Memory[2] = MP2;
+	Memory[3] = MP3;
+
+	QUEUE **Disk = malloc(sizeof(QUEUE*) * 4);
+	QUEUE *DP0 = newQUEUE(freeProcess);
+	QUEUE *DP1 = newQUEUE(freeProcess);
+	QUEUE *DP2 = newQUEUE(freeProcess);
+	QUEUE *DP3 = newQUEUE(freeProcess);
+	Disk[0] = DP0;
+	Disk[1] = DP1;
+	Disk[2] = DP2;
+	Disk[3] = DP3;
+
+	QUEUE *Completed = newQUEUE(freeProcess);
+
+	// Processes are created and placed onto Memory or Disk
+	for(int x = 0; x < 5; ++x)
+		createProcess(Memory, Disk);
 	
-
-	QUEUE **Disk = malloc ( sizeof( QUEUE* ) * 4 );
-	QUEUE *P0N = newQUEUE ( freeProcess );
-	QUEUE *P1N = newQUEUE ( freeProcess );
-	QUEUE *P2N = newQUEUE ( freeProcess );
-	QUEUE *P3N = newQUEUE ( freeProcess );
-	Disk[ 0 ] = P0N;
-	Disk[ 1 ] = P1N;
-	Disk[ 2 ] = P2N;
-	Disk[ 3 ] = P3N;
-
-    for(int x = 0; x < 10; ++x){
-        Process *p = newProcess(clock_time);
-        storage_handler(Memory, Disk, &memory, p);
-    }
-
-    double new_process = clock_time + ( ( rand ( ) % 9981 ) + 20 );
+	int processCount;
 	do {
-		if ( processCount == blockedCount ) {
-			clock_time = btime;
-			btime = 0;
-		}
+		processCount = 0;
 
-		for ( int x = 0 ; x < 4 ; ++x ) {
-			int tempSize = sizeQUEUE ( Memory[ x ] );
-			for ( int y = 0 ; y < tempSize && sizeQUEUE ( Memory[ x ] ) ; ++y ) {
-				proc_exec ( Memory , Disk , Memory[ x ] , dequeue ( Memory[ x ] ) , &memory  , &new_process );
+		for(int x = 0; x < 4; ++x) {
+			int prioritySize = sizeQUEUE(Memory[x]);
+			for(int y = 0; y < prioritySize; ++y) {
+				execution_engine(Memory[x], Completed);
 			}
+			processCount += prioritySize;
 		}
 
-		if ( processCount - memorySize ) {
-			for ( int x = 0 ; x < 4 ; ++x ) {
-				int tempSize = sizeQUEUE ( Disk[ x ] );
-				for ( int y = 0 ; y < tempSize && sizeQUEUE ( Disk[ x ] ) ; ++y ) {
-					disk_handler ( Memory , Disk , &memory , dequeue ( Disk[ x ] ) , &new_process );
-				}
+		for(int x = 0; x < 4; ++x) {
+			int prioritySize = sizeQUEUE(Disk[x]);
+			for(int y = 0; y < prioritySize; ++y) {
+				execution_engine(Disk[x], Completed);
 			}
+			processCount += prioritySize;
 		}
-	} while ( processCount );
-	
-	for ( int x = 0 ; x < 4 ; ++x ) {
-		freeQUEUE ( Memory[x] );
-		freeQUEUE ( Disk[x] );
+		
+
+	} while(processCount != 0);
+
+	int size = sizeQUEUE(Completed);
+
+	for(int x = 0; x < size; ++x) {
+		Process *p = dequeue(Completed);
 	}
-
-	double count0 = 0 , count1 = 0 , count2 = 0 , count3 = 0,
-			int0 = 0 , int1 = 0 , int2 = 0 , int3 = 0;
-
-	for ( int x = pname ; x > 0 ; --x ) {
-		Process *p = dequeue ( Memory[ 4 ] );
-		if ( p->priority == 0 ) {
-			count0 += p->end_time - p->start_time;
-			int0 += p->max_int;
-		}
-		else if ( p->priority == 1 ) {
-			count1 += p->end_time - p->start_time;
-			int1 += p->max_int;
-		}
-		else if ( p->priority == 2 ) {
-			count2 += p->end_time - p->start_time;
-			int2 += p->max_int;
-		}
-		else {
-			count3 += p->end_time - p->start_time;
-			int3 += p->max_int;
-		}
-
-		enqueue( Memory[ 4 ] , p );
-	}
-
-	double avg0 = count0 / pCount[0],
-	avg1 = count1 / pCount[1],
-	avg2 = count2 / pCount[2],
-	avg3 = count3 / pCount[3],
-	avg4 = int0 / pCount[0],
-	avg5 = int1 / pCount[1],
-	avg6 = int2 / pCount[2],
-	avg7 = int3 / pCount[3],
-	StdDev0 = 0,
-	StdDev1 = 0,
-	StdDev2 = 0,
-	StdDev3 = 0,
-	StdDev4 = 0,
-	StdDev5 = 0,
-	StdDev6 = 0,
-	StdDev7 = 0;
-
-	for ( int x = pname ; x > 0 ; --x ) {
-		Process *p = dequeue ( Memory[ 4 ] );
-		if ( p->priority == 0 ) {
-			StdDev0 += pow( ( ( p->end_time - p->start_time ) - avg0 ) , 2 );
-			StdDev4 += pow( ( p->max_int  - avg4 ) , 2 );
-		}
-		else if ( p->priority == 1 ) {
-			StdDev1 += pow( ( ( p->end_time - p->start_time ) - avg1 ) , 2 );
-			StdDev5 += pow( ( p->max_int  - avg5 ) , 2 );
-		}
-		else if ( p->priority == 2 ) {
-			StdDev2 += pow( ( ( p->end_time - p->start_time ) - avg2 ) , 2 );
-			StdDev6 += pow( ( p->max_int  - avg6 ) , 2 );
-		}
-		else {
-			StdDev3 += pow( ( ( p->end_time - p->start_time ) - avg3 ) , 2 );
-			StdDev7 += pow( ( p->max_int  - avg7 ) , 2 );
-		}
-
-		enqueue( Memory[ 4 ] , p );
-	}
-
-	if( pCount[ 0 ] > 1) {
-		StdDev0 = sqrt( ( StdDev0 / ( pCount[ 0 ] - 1 ) ) );
-		StdDev4 = sqrt( ( StdDev4 / ( pCount[ 0 ] - 1 ) ) );
-	}
-	if( pCount[ 1 ] > 1){
-		StdDev1 = sqrt( ( StdDev1 / ( pCount[ 1 ] - 1 ) ) );
-		StdDev5 = sqrt( ( StdDev5 / ( pCount[ 1 ] - 1 ) ) );
-	}
-	if( pCount[ 2 ] > 1) {
-		StdDev2 = sqrt( ( StdDev2 / ( pCount[ 2 ] - 1 ) ) );
-		StdDev6 = sqrt( ( StdDev6 / ( pCount[ 2 ] - 1 ) ) );
-	}
-	if( pCount[ 3 ] > 1) {
-		StdDev3 = sqrt( ( StdDev3 / ( pCount[ 3 ] - 1 ) ) );
-		StdDev7 = sqrt( ( StdDev7 / ( pCount[ 3 ] - 1 ) ) );
-	}
-
-
-	printf ( "P0:\n  Clock-Time\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg0 / 1000 , StdDev0 / 1000 );
-	printf ( "  Max Interval\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg4 / 1000 , StdDev4 / 1000 );
-	printf ( "P1:\n  Clock-Time\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg1 / 1000 , StdDev1 / 1000 );
-	printf ( "  Max Interval\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg5 / 1000 , StdDev5 / 1000 );
-	printf ( "P2:\n  Clock-Time\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg2 / 1000 , StdDev2 / 1000 );
-	printf ( "  Max Interval\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg6 / 1000 , StdDev6 / 1000 );
-	printf ( "P3:\n  Clock-Time\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg3 / 1000 , StdDev3 / 1000 );
-	printf ( "  Max Interval\n    avg:    %.6lf s\n    StdDev: %.6lf s\n" , avg7 / 1000 , StdDev7 / 1000 );
-	printf( "\nReached End of File: %i\n" , tlr );
-
-	freeQUEUE ( Memory[ 4 ] );
-	free ( Memory );
-	free ( Disk );
-
-	return 0;
 }

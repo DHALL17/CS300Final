@@ -10,6 +10,7 @@ void  enqueue(QUEUE *items,void *value);
 void *dequeue(QUEUE *items);
 void *peekQUEUE(QUEUE *items);
 int sizeQUEUE(QUEUE *items);
+int sizeQUEUEarray(QUEUE **items);
 void  freeQUEUE(QUEUE *items);
 
 #endif
