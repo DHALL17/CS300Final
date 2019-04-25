@@ -15,7 +15,8 @@ double new_process;
 // 	return;
 // }
 
-void endProcess(QUEUE *Completed, Process *p) {
+void endProcess(QUEUE *Completed, Process *p)
+{
 	// Working set of a process is 10% of it's memory
 	double workingSet = p->memory /10;
 	// Replacing the memory the process used
@@ -24,7 +25,8 @@ void endProcess(QUEUE *Completed, Process *p) {
 	return;
 }
 
-void createProcess(QUEUE **Memory, QUEUE **Disk) {
+void createProcess(QUEUE **Memory, QUEUE **Disk)
+{
 	Process *p = newProcess(clock_time);
 	// Only a processes working set is placed in memory
 	if(p == NULL)
@@ -45,7 +47,8 @@ void createProcess(QUEUE **Memory, QUEUE **Disk) {
 	return;
 }
 
-void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk) {
+void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk)
+{
 	Process *p = dequeue(q);
 	// Handles gathering information for stats in the end
 	if ( p->max_int == 0.0)
@@ -98,7 +101,8 @@ void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk) 
 	return;
 }
 
-void diskToMemory(QUEUE **Memory, QUEUE **Disk, Process *p) {
+void diskToMemory(QUEUE **Memory, QUEUE **Disk, Process *p)
+{
 	double workingSet = p->memory / 10;
 	if(systemMemory - workingSet >= 0)
 	{
@@ -136,7 +140,8 @@ void diskToMemory(QUEUE **Memory, QUEUE **Disk, Process *p) {
 	}
 }
 
-int main(void) {
+int main(void)
+{
 	clock_time = 0;
 	systemMemory = 100;
 	new_process = ((rand() % 9981) + 20) / 1000.0;
