@@ -39,6 +39,13 @@ void *peekQUEUE(QUEUE *items){
     return getCDA(items->cda, 0);
 }
 
+// Breaks queue rules by inserting into the front but it's ok
+void reQUEUE(QUEUE *items, void *value){
+    insertCDAfront(items->cda, value);
+    items->size++;
+    return;
+}
+
 //Returns the size of the array
 int   sizeQUEUE(QUEUE *items){
     return items->size;
