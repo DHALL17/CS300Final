@@ -4,7 +4,7 @@
 
 Process *newProcess(double clock_time) {
     static int pnum = 0;
-    if(pnum == 2200)
+    if(pnum == 42)
         return NULL;
     Process *p = malloc(sizeof(Process));
     sprintf(p->pname, "P%i", pnum++);
