@@ -21,6 +21,9 @@ void endProcess(QUEUE *Completed, Process *p)
 {
 	double workingSet = p->memory / 10;
 	systemMemory += workingSet;
+	for(int x = 0; x < 256; ++x)
+		if(p->pageTable[x][1] != 0)
+			put_mem(p->pageTable[x][1]);
 	enqueue(Completed, p);
 }
 
@@ -200,7 +203,7 @@ int main(void)
 
 	QUEUE *Completed = newQUEUE(freeProcess);
 
-	for(int x = 0; x < 10; ++x)
+	for(int x = 0; x < 100; ++x)
 		createProcess(Memory, Disk);
 	
 	//  ------   SCHEDULER  ------   //
