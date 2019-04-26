@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "process.h"
 
 Process *newProcess(double clock_time) {
@@ -8,6 +8,11 @@ Process *newProcess(double clock_time) {
         return NULL;
     Process *p = malloc(sizeof(Process));
     sprintf(p->pname, "P%i", pnum++);
+    for(int x = 0; x < 256; ++x)
+        for(int y = 0; y < 3; ++y)
+            p->pageTable[x][y] = 0;
+    p->LRU = newLRU();
+    p->pageCount = 100;
     p->priority = rand() % 4;                   // Priority of the process
     p->memory = (rand() % 191) + 10;            // Amount of memory required for the process
     p->runtime = (rand() % 39601) + 400;        // Maximum allowed run-time

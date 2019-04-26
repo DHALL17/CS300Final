@@ -1,9 +1,14 @@
 #ifndef __PROCESS_INCLUDED__
 #define __PROCESS_INCLUDED__
 
+#include "lru.h"
+
 typedef struct Process {
 	char pname[10];
-	int priority, 
+	int pageTable[256][3];
+	LRU *LRU;
+	int pageCount,
+	priority,
 	memory,
     block_count;
 	double blocked,
