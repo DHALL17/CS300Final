@@ -4,14 +4,15 @@
 #include "lru.h"
 
 typedef struct Process {
-	char pname[10];
+	int pID;
 	int pageTable[256][3];
+	int diskRequest[3];
 	LRU *LRU;
 	int pageCount,
 	priority,
 	memory,
     block_count;
-	double blocked,
+	double blocked_time,
     runtime,
 	exec_time,
 	start_time,
@@ -21,6 +22,19 @@ typedef struct Process {
 } Process;
 
 Process *newProcess(double clock_time);
+
+int getDirty(Process *p, int index);
+void setDirty(Process *p, int index, int flag);
+
+int getMemory(Process *p, int index);
+void setMemory(Process *p, int index, int address);
+
+int getDisk(Process *p, int index);
+void setDisk(Process *p, int index, int address);
+
+int isHolding(Process *p);
+void cleanHolding(Process *p);
+
 void freeProcess(void *process);
 
 #endif

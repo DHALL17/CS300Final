@@ -1,6 +1,3 @@
-/*******************************************************************************
-disk.c
-*******************************************************************************/
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -24,22 +21,25 @@ int qi = 0;
 
 void enq(long n);
 long deq(int pos);
-void load(int time);
+void load(double time);
 int smallest();
 int largest();
-int process(int time);
+double process(double time);
 
 int main()
 {
     inf = fopen("requests", "r");
     outf = fopen("results", "w");
-
-    long time = 0;
-    while (!feof(inf))
+    
+    double time = 0;
+    while (1)
     {
         load(time);
         time = process(time);
     }
+    
+    fclose(outf);
+    fclose(inf);
 }
 
 void enq(long n)
@@ -54,10 +54,10 @@ long deq(int pos)
     return r;
 }
 
-void load(int time)
+void load(double time)
 {
-    static int t = -1;
-    static rec_un x;
+    static double t = 0;
+    static rec_un x = {0};
     int loc;
     int proc;
     
@@ -67,11 +67,14 @@ void load(int time)
     }
     while (t <= time)
     {
-        if (t >= 0)
+        if (x.y != 0)
         {
             enq(x.y);
         }
-        fscanf(inf, "%d %d %d\n", &t, &loc, &proc);
+        while (fscanf(inf, "%24lf %14i %9i\n", &t, &loc, &proc) <= 0)
+        {
+            fseek(inf, -1, SEEK_CUR);
+        }
         x.x.loc = loc;
         x.x.proc = proc;
     }
@@ -105,19 +108,18 @@ int largest()
     return li;
 }
 
-int process(int time)
+double process(double time)
 {
     static int dir = 0;
-
+    
     if (dir)
     {
         while (qi)
         {
             rec_un y;
             y.y = deq(smallest());
-            time += 5;
-            printf("%d %d\n", time, y.x.proc);
-            fprintf(outf, "%d %d\n", time, y.x.proc);
+            time += 5.0 / 1000.0;
+            fprintf(outf, "%18.6lf %9i\n", time, y.x.proc);
         }
     }
     else
@@ -126,11 +128,11 @@ int process(int time)
         {
             rec_un y;
             y.y = deq(largest());
-            time += 5;
-            printf("%d %d\n", time, y.x.proc);
-            fprintf(outf, "%d %d\n", time, y.x.proc);
+            time += 5.0 / 1000.0;
+            fprintf(outf, "%18.6lf %9i\n", time, y.x.proc);
         }
     }
+    fflush(outf);
     dir ^= 1;
     return time;
 }

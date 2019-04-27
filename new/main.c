@@ -7,8 +7,10 @@
 #include "lru.h"
 
 double clock_time;
-double systemMemory;
-double new_process;
+static double systemMemory;
+static double new_process;
+FILE *Requests;
+FILE *Results;
 
 // void stats(Process *p) {
 // 	int p0count = 0, p1count = 0, p2count = 0, p3count = 0;	// Each Priorities process count
@@ -44,52 +46,89 @@ void createProcess(QUEUE **Memory, QUEUE **Disk)
 	}
 }
 
+void unblock()
+{
+
+}
+
+void diskRequest(Process *p, int address, int dirty, QUEUE *Blocked)
+{
+	double uTime;
+	int uId;
+	fprintf(Requests, "%18.6f %14i %9i\n", clock_time, address, p->pID);
+	enqueue(Blocked, p);
+	while(fscanf(Results, "%24f %9i\n", &uTime, &uId) > 0)
+	{
+		printf("%18.6f %9i\n", uTime, uId);
+		int size = sizeQUEUE(Blocked);
+		for(int x = 0; x < size; ++x)
+		{
+			Process *b = dequeue(Blocked);
+			if(b->pID == uId)
+				b->blocked_time = uTime;
+			enqueue(Blocked, b);
+		}
+	}
+	fseek(Results, -1, SEEK_CUR);
+}
+
+void replace(Process *p, double block, int address, int dirty, QUEUE *Blocked)
+{
+	int lruAddress = dequeueLru(p->LRU);
+	int memAddress = getMemory(p, lruAddress);
+	if((getDisk(p, lruAddress) != 0 && getDirty(p, lruAddress) == 1) || getDisk(p, lruAddress) == 0)
+	{
+		diskRequest(p, lruAddress, 0, Blocked);
+	}
+
+	setMemory(p, lruAddress, 0);
+	setMemory(p, address, memAddress);
+	setDirty(p, address, getDirty(p, address) || dirty);
+
+	enqueueLru(p->LRU, address);
+	return;
+}
+
 /*
 ** 0 == Dirty Flag
 ** 1 == Memory Address
-** 2 == Disk Address
+** 2 == Instruction Block
 **/
-void pageTableHandler(Process *p, int address)
+int pageTableHandler(Process *p, double block, int address, int dirty, QUEUE *Blocked)
 {
-	if(p->pageTable[address][1] != 0)
-			return;
+	if(getMemory(p, address) != 0)
+	{
+		setDirty(p, address, getDirty(p, address) || dirty);
+		return 1;
+	}
+	p->diskRequest[0] = dirty; p->diskRequest[1] = address; p->diskRequest[2] = block;
 	else if(p->pageCount)
 	{
-		if(p->pageTable[address][2] == 0)
+		if(getDisk(p, address) == 0)
 		{
 			int memAddress = get_mem();
 			if(memAddress)
 			{
-				p->pageTable[address][1] = memAddress;
+				setMemory(p, address, memAddress);
+				setDirty(p, address, 1);
 				p->pageCount--;
-				enqueueInt(p->LRU, address);
-				return;
-			} else
-			{
-				int lruAddress = dequeueInt(p->LRU);
-				int memAddress = p->pageTable[lruAddress][1];
-				p->pageTable[lruAddress][1] = 0;
-				p->pageTable[address][1] = memAddress;
-				enqueueInt(p->LRU, address);
-				return;
+				enqueueLru(p->LRU, address);
+				return 1;
 			}
-		} else
-		{
-			printf("Not Developed Yet\n");
-			// Disk Request --- Disk Manager not developed yet
+			else
+				replace(p, block, address, dirty, Blocked);
+			return 0;
 		}
-	} else
-	{
-		int lruAddress = dequeueInt(p->LRU);
-		int memAddress = p->pageTable[lruAddress][1];
-		p->pageTable[lruAddress][1] = 0;
-		p->pageTable[address][1] = memAddress;
-		enqueueInt(p->LRU, address);
-		return;
+		else
+			diskRequest(p, block, address, dirty, Blocked);
+		return 0;
 	}
+	else
+		replace(p, block, address, dirty, Blocked);
+	return 0;
 }
 
-void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk)
+void executionEngine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk, QUEUE *Blocked)
 {
 	Process *p = dequeue(q);
 	if ( p->max_int == 0.0)
@@ -106,11 +145,13 @@ void execution_engine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk)
 	{
 		double block = ((rand() % 19) + 1) / 1000000.0; // A block represents a microsecond 1us = 0.000001s
 		int address = rand() % 1000000;
+		int dirty = rand() % 2;
 		address = address >> 12;	// Only care about upper 8 bits
 		p->block_count--;
+		if(!pageTableHandler(p, block, address, dirty, Blocked))
+			return;
 		clock_time += block;
 		p->exec_time += block;
-		pageTableHandler(p, address);
 
 		if(new_process <= clock_time)
 		{
@@ -177,6 +218,8 @@ void diskToMemory(QUEUE **Memory, QUEUE **Disk, Process *p)
 
 int main(void)
 {
+	Requests = fopen("requests", "w");
+	Results = fopen("results", "r");
 	clock_time = 0;
 	systemMemory = 100;
 	new_process = ((rand() % 9981) + 20) / 1000.0;
@@ -202,8 +245,9 @@ int main(void)
 	Disk[3] = DP3;
 
 	QUEUE *Completed = newQUEUE(freeProcess);
+	QUEUE *Blocked = newQUEUE(NULL);
 
-	for(int x = 0; x < 100; ++x)
+	for(int x = 0; x < 2; ++x)
 		createProcess(Memory, Disk);
 	
 	//  ------   SCHEDULER  ------   //
@@ -217,7 +261,7 @@ int main(void)
 			int prioritySize = sizeQUEUE(Memory[x]);
 			for(int y = 0; y < prioritySize; ++y)
 			{
-				execution_engine(Memory[x], Completed, Memory, Disk);
+				executionEngine(Memory[x], Completed, Memory, Disk, Blocked);
 			}
 			processCount += prioritySize;
 		}
@@ -228,7 +272,7 @@ int main(void)
 			for(int y = 0; y < prioritySize; ++y)
 			{
 				diskToMemory(Memory, Disk, dequeue(Disk[x]));
-				execution_engine(Memory[x], Completed, Memory, Disk);
+				executionEngine(Memory[x], Completed, Memory, Disk, Blocked);
 			}
 			processCount += prioritySize;
 		}
@@ -241,7 +285,7 @@ int main(void)
 	for(int x = 0; x < size; ++x)
 	{
 		Process *p = dequeue(Completed);
-		printf("Process Name: %s\n", p->pname);
+		printf("Process Name: p%i\n", p->pID);
 		printf("Process Priority: %i\n", p->priority);
 		printf("Process Block_Count: %i\n", p->block_count);
 		printf("Process RunTime: %f\n", p->runtime);

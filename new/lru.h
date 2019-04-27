@@ -4,7 +4,7 @@
 typedef struct lru LRU;
 
 LRU *newLRU(void);
-void enqueueInt(LRU *, int);
-int dequeueInt(LRU *);
+void enqueueLru(LRU *, int);
+int dequeueLru(LRU *);
 
 #endif

@@ -21,17 +21,17 @@ int qi = 0;
 
 void enq(long n);
 long deq(int pos);
-void load(unsigned long long time);
+void load(double time);
 int smallest();
 int largest();
-unsigned long long process(unsigned long long time);
+double process(double time);
 
 int main()
 {
     inf = fopen("requests", "r");
     outf = fopen("results", "w");
     
-    unsigned long long time = 0;
+    double time = 0;
     while (1)
     {
         load(time);
@@ -54,9 +54,9 @@ long deq(int pos)
     return r;
 }
 
-void load(unsigned long long time)
+void load(double time)
 {
-    static unsigned long long t = 0;
+    static double t = 0;
     static rec_un x = {0};
     int loc;
     int proc;
@@ -67,16 +67,13 @@ void load(unsigned long long time)
     }
     while (t <= time)
     {
-        if (x.y != 0)
+        while (fscanf(inf, "%24lf %14i %9i\n", &t, &loc, &proc) > 0)
         {
+            x.x.loc = loc;
+            x.x.proc = proc;
             enq(x.y);
         }
-        while (fscanf(inf, "%24llu %14d %9d\n", &t, &loc, &proc) <= 0)
-        {
-            fseek(inf, -1, SEEK_CUR);
-        }
-        x.x.loc = loc;
-        x.x.proc = proc;
+        fseek(inf, -1, SEEK_CUR);
     }
 }
 
@@ -108,7 +105,7 @@ int largest()
     return li;
 }
 
-unsigned long long process(unsigned long long time)
+double process(double time)
 {
     static int dir = 0;
     
@@ -118,8 +115,8 @@ unsigned long long process(unsigned long long time)
         {
             rec_un y;
             y.y = deq(smallest());
-            time += 5;
-            fprintf(outf, "%24llu %9d\n", time, y.x.proc);
+            time += 5.0 / 1000.0;
+            fprintf(outf, "%18.6lf %9i\n", time, y.x.proc);
         }
     }
     else
@@ -128,8 +125,8 @@ unsigned long long process(unsigned long long time)
         {
             rec_un y;
             y.y = deq(largest());
-            time += 5;
-            fprintf(outf, "%24llu %9d\n", time, y.x.proc);
+            time += 5.0 / 1000.0;
+            fprintf(outf, "%18.6lf %9i\n", time, y.x.proc);
         }
     }
     fflush(outf);
