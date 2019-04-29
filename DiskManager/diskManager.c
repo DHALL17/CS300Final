@@ -28,6 +28,8 @@ double process(double time);
 
 int main()
 {
+    inf = fopen("requests", "w");
+    fclose(inf);
     inf = fopen("requests", "r");
     outf = fopen("results", "w");
     
@@ -60,23 +62,23 @@ void load(double time)
     static rec_un x = {0};
     int loc;
     int proc;
-    
+
     if (t > time)
     {
         time = t;
     }
     while (t <= time)
     {
-        if (x.y != 0)
+        while (fscanf(inf, "%24lf %14i %9i\n", &t, &loc, &proc) > 0)
         {
+            if(loc >= 300 && proc >= 50)
+                return;
+            x.x.loc = loc;
+            x.x.proc = proc;
             enq(x.y);
+            
         }
-        while (fscanf(inf, "%24lf %14i %9i\n", &t, &loc, &proc) <= 0)
-        {
-            fseek(inf, -1, SEEK_CUR);
-        }
-        x.x.loc = loc;
-        x.x.proc = proc;
+        fseek(inf, -1, SEEK_CUR);
     }
 }
 
@@ -114,22 +116,21 @@ double process(double time)
     
     if (dir)
     {
+        rec_un y;
         while (qi)
         {
-            rec_un y;
             y.y = deq(smallest());
             time += 5.0 / 1000.0;
-            fprintf(outf, "%18.6lf %9i\n", time, y.x.proc);
+            fprintf(outf, "%24lf %9i\n", time, y.x.proc);
         }
-    }
-    else
+    } else
     {
+        rec_un y;
         while (qi)
         {
-            rec_un y;
             y.y = deq(largest());
             time += 5.0 / 1000.0;
-            fprintf(outf, "%18.6lf %9i\n", time, y.x.proc);
+            fprintf(outf, "%24lf %9i\n", time, y.x.proc);
         }
     }
     fflush(outf);

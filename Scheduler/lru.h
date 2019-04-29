@@ -4,6 +4,7 @@
 typedef struct lru LRU;
 
 LRU *newLRU(void);
+int peekLru(LRU *lru);
 void enqueueLru(LRU *, int);
 int dequeueLru(LRU *);
 

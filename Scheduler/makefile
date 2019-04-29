@@ -25,4 +25,4 @@ lru.o: lru.c lru.h
 	gcc $(FLAGS) -c lru.c
 
 clean:
-	rm -f $(OBJS) main
+	rm -f $(OBJS) main requests results

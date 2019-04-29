@@ -18,6 +18,11 @@ LRU *newLRU()
     return lru;
 }
 
+int peekLru(LRU *lru)
+{
+    return lru->array[lru->frontIndex];
+}
+
 void enqueueLru(LRU *lru, int value)
 {
     lru->array[lru->endIndex] = value;
