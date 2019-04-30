@@ -11,30 +11,33 @@ double unblockInterval;
 static double systemMemory;
 static double new_process;
 FILE *Requests;
-FILE *Results;int passes = 0;
+FILE *Results;
+int addressCount = 0;
+int nonZero = 0;
+int a = 0;
 
 void endProcess(QUEUE *Completed, Process *p)
 {
 	double workingSet = p->memory / 10;
 	systemMemory += workingSet;
-	for(int x = 0; x < 256; ++x)
-	{
-		if(p->pageTable[x][1] != 0)
-			put_mem(p->pageTable[x][1]);
-		if(p->pageTable[x][2] != 0)
-			put_disk(p->pageTable[x][2]);
-	}
+	// for(int x = 0; x < 256; ++x)
+	// {
+	// 	if(p->pageTable[x][1] != 0)
+	// 		put_mem(p->pageTable[x][1]);
+	// 	if(p->pageTable[x][2] != 0)
+	// 		put_disk(p->pageTable[x][2]);
+	// }
 
-	printf("\n\nPROCESS %i FINISHED\n\n\n", p->pID);
-	printf("Process Name: p%i\n", p->pID);
-	printf("Process Priority: %i\n", p->priority);
-	printf("Process Block_Count: %i\n", p->block_count);
-	printf("Process Request Count: %i\n", p->requestCount);
-	printf("Process RunTime: %f\n", p->runtime);
-	printf("Process Ecec_Time: %f\n", p->exec_time);
-	printf("Process Start_Time: %f\n", p->start_time);
-	printf("Process End_Time: %f\n", p->end_time);
-	printf("Process Max_Int: %f\n\n", p->max_int);
+	// printf("\n\nPROCESS %i FINISHED\n\n\n", p->pID);
+	// printf("Process Name: p%i\n", p->pID);
+	// printf("Process Priority: %i\n", p->priority);
+	// printf("Process Block_Count: %i\n", p->block_count);
+	// printf("Process Request Count: %i\n", p->requestCount);
+	// printf("Process RunTime: %f\n", p->runtime);
+	// printf("Process Ecec_Time: %f\n", p->exec_time);
+	// printf("Process Start_Time: %f\n", p->start_time);
+	// printf("Process End_Time: %f\n", p->end_time);
+	// printf("Process Max_Int: %f\n\n", p->max_int);
 	fflush(stdout);
 	
 	enqueue(Completed, p);
@@ -45,7 +48,6 @@ void createProcess(QUEUE **Memory, QUEUE **Disk)
 	Process *p = newProcess(clock_time);
 	if(p == NULL)
 		return;
-	printf("PID: %i\n", p->pID);
 
 	double workingSet = p->memory / 10;
 	if(systemMemory - workingSet < 0)
@@ -118,7 +120,6 @@ void checkUnblocked(QUEUE *Blocked, QUEUE **Disk, QUEUE **Memory)
 
 void diskRequest(Process *p, int address, QUEUE *Blocked)
 {
-	
 	p->requestCount++;
 	setDirty(p, address, 0);
 	fprintf(Requests, "%24lf %14i %9i\n", clock_time, address, p->pID);
@@ -136,31 +137,38 @@ int replace(Process *p, int address, int dirty, QUEUE *Blocked)
 	int memAddress = getMemory(p, lruAddress);
 	if(getDirty(p, lruAddress) == 1 || getDisk(p, lruAddress))
 	{
+		put_mem(memAddress);
 		diskRequest(p, lruAddress, Blocked);
+		setMemory(p, lruAddress, 0);
 		return 0;
 	}
 
 	setMemory(p, lruAddress, 0);
 	setMemory(p, address, memAddress);
 	setDirty(p, address, getDirty(p, address) || dirty);
-	dequeueLru(p->LRU);
+	getLru(p->LRU);
+	insertLru(p->LRU, lruAddress);
 
-	enqueueLru(p->LRU, address);
 	return 1;
 }
 
 int pageTableHandler(Process *p, double block, int address, int dirty, QUEUE *Blocked)
 {
+	int index = lookUp(p->LRU, address);
+	if(index != -1)
+	{
+		deleteLru(p->LRU, index);
+		insertLru(p->LRU, address);
+	}
+
 	if(getMemory(p, address) != 0)
 	{
 		setDirty(p, address, getDirty(p, address) || dirty);
+		nonZero++;
 		return 1;
 	}
 	else if(p->pageCount)
 	{
-		printf("Passes: %i\n", passes);
-		fflush(stdout);
-		passes = 0;
 		int memAddress = get_mem();
 		if(memAddress)
 		{
@@ -169,10 +177,10 @@ int pageTableHandler(Process *p, double block, int address, int dirty, QUEUE *Bl
 				setMemory(p, address, memAddress);
 				setDirty(p, address, 1);
 				p->pageCount--;
-				enqueueLru(p->LRU, address);
+				insertLru(p->LRU, address);
 				return 1;
 			}
-			
+
 			setHolding(p, dirty, address, block);
 			diskRequest(p, address, Blocked);
 			return 0;
@@ -216,15 +224,11 @@ void executionEngine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk, Q
 		} else
 		{
 			block = ((rand() % 19) + 1) / 1000000.0; // A block represents a microsecond 1us = 0.000001s
-			address = rand() % 1000000;
+			address = a++ % 100;
 			dirty = rand() % 2;
-			address = address >> 12;	// Only care about upper 8 bits
 			p->block_count--;
+			addressCount++;
 		}
-		passes++;
-
-		if(p->pageCount < 0 || p->pageCount > 1000000)
-			printf("Hoogly Boogly\n");
 
 		if(p->block_count >= 0)
 		{
@@ -236,11 +240,11 @@ void executionEngine(QUEUE *q, QUEUE *Completed, QUEUE **Memory, QUEUE **Disk, Q
 			clock_time += block;
 			p->exec_time += block;
 
-			if(new_process <= clock_time)
-			{
-				createProcess(Memory, Disk);
-				new_process = clock_time + (((rand() % 9981) + 20) / 1000.0);
-			}
+			// if(new_process <= clock_time)
+			// {
+			// 	createProcess(Memory, Disk);
+			// 	new_process = clock_time + (((rand() % 9981) + 20) / 1000.0);
+			// }
 
 			if(clock_time >= unblockInterval)
 			{
@@ -338,7 +342,7 @@ int main(void)
 	QUEUE *Completed = newQUEUE(freeProcess);
 	QUEUE *Blocked = newQUEUE(NULL);
 
-	for(int x = 0; x < 20; ++x)
+	for(int x = 0; x < 1; ++x)
 		createProcess(Memory, Disk);
 
 	//  ------   SCHEDULER  ------   //
@@ -394,7 +398,12 @@ sched:
 		printf("Process Ecec_Time: %f\n", p->exec_time);
 		printf("Process Start_Time: %f\n", p->start_time);
 		printf("Process End_Time: %f\n", p->end_time);
-		printf("Process Max_Int: %f\n\n", p->max_int);
+		printf("Process Max_Int: %f\n\n\n", p->max_int);
+
+		printf("Address Count: %i\n", addressCount);
+		printf("Non Zero: %i\n", nonZero);
+		for(int x = 0; x < 100; ++x)
+			printf("Page %i: %i\n", x, p->LRU->array[x]);
 		fflush(stdout);
 	}
 

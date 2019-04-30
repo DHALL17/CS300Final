@@ -2,36 +2,69 @@
 #include <stdlib.h>
 #include "lru.h"
 
-struct lru{
-    int array[100];
-    int frontIndex;
-    int endIndex;
-};
-
 LRU *newLRU()
 {
     LRU *lru = malloc(sizeof(LRU));
     for(int x = 0; x < 100; ++x)
-        lru->array[x] = 0;
-    lru->frontIndex = 0;
+        lru->array[x] = -1;
     lru->endIndex = 0;
     return lru;
 }
 
 int peekLru(LRU *lru)
 {
-    return lru->array[lru->frontIndex];
+    return lru->array[0];
 }
 
-void enqueueLru(LRU *lru, int value)
+int lookUp(LRU *lru, int address)
 {
-    lru->array[lru->endIndex] = value;
-    lru->endIndex = (lru->endIndex + 1) % 100;
+    for(int x = 0; x < 100; ++x)
+        if(lru->array[x] == address)
+        {
+            return x;
+        }
+    return -1;
 }
 
-int dequeueLru(LRU *lru)
+// int peekLru(LRU *lru)
+// {
+//     return lru->array[lru->frontIndex];
+// }
+
+void insertLru(LRU *lru, int value)
 {
-    int address = lru->array[lru->frontIndex];
-    lru->frontIndex = (lru->frontIndex + 1) % 100;
-    return address;
+    lru->array[lru->endIndex++] = value;
+}
+
+// void enqueueLru(LRU *lru, int value)
+// {
+//     lru->array[lru->endIndex] = value;
+//     lru->endIndex = (lru->endIndex + 1) % 100;
+// }
+
+void deleteLru(LRU *lru, int index)
+{
+    int temp = index + 1;
+    while(temp < lru->endIndex)
+    {
+        lru->array[index] = lru->array[temp];
+        index++;
+        temp = index + 1;
+    }
+    lru->array[index] = -1;
+    lru->endIndex--;
+}
+
+// int dequeueLru(LRU *lru)
+// {
+//     int address = lru->array[lru->frontIndex];
+//     lru->frontIndex = (lru->frontIndex + 1) % 100;
+//     return address;
+// }
+
+int getLru(LRU *lru)
+{
+    int index = lru->array[0];
+    deleteLru(lru, 0);
+    return index;
 }
